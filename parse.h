@@ -1,5 +1,5 @@
-#ifndef SCANNER_IO_H
-#define SCANNER_IO_H
+#ifndef PARSE_H
+#define PARSE_H
 
 #include <stdio.h>
 #include <errno.h>
@@ -36,4 +36,4 @@ void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **o
 // addresses and port ranges.
 int parse_line(char **line, int n_line, struct sockaddr_in *dest, int *p_max, char **ifilename);
 
-#endif // SCANNER_IO_H
+#endif // PARSE_H

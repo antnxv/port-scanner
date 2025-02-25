@@ -1,4 +1,4 @@
-#include "scanner_io.h"
+#include "parse.h"
 
 void print_usage(FILE *stream) {
     fprintf(stream, "+---------------------------------------------------+\n");

@@ -1,4 +1,4 @@
-#include "scanner.h"
+#include "portscan.h"
 
 int main(int argc, char const *argv[]) {
     FILE *istream;
