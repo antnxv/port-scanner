@@ -1,43 +1,56 @@
 #include "scanner_io.h"
 
 void print_usage(FILE *stream) {
-    fprintf(stream, "Usage: portscan OPTIONS\n");
-    fprintf(stream, "--ports (-p) START[:END]: Port (range) to scan. Default 1-1024, valid 1-65535.\n");
-    fprintf(stream, "--ip (-i) IP_ADDR: IP Address to scan. Default localhost.\n");
-    fprintf(stream, "--input (-list, -l) FILENAME: List of IP Addresses and ports to iteratively scan.\n");
-    fprintf(stream, "--output (-o) FILENAME: Optional output file.\n");
-    fprintf(stream, "Must specify either an input list or both a port (range) and IP address, but not both!\n");
+    fprintf(stream, "-----------------------------------------------------\n");
+    fprintf(stream, "Usage: portscan OPTIONS\n\n");
+    fprintf(stream, "--ports (-p) START[:END]\n Port (range) to scan. Default 1-1024, valid 1-65535.\n");
+    fprintf(stream, " Do not supply an input file.\n\n");
+    fprintf(stream, "--ip (-i) IP_ADDR\n IP Address to scan. Default localhost.\n");
+    fprintf(stream, " Do not supply an input file.\n\n");
+    fprintf(stream, "--input (-list, -l) FILENAME\n List of IP Addresses and ports to iteratively scan.\n");
+    fprintf(stream, " Do not supply IP or port(s) as arguments.\n\n");
+    fprintf(stream, "--output (-o) FILENAME\n Optional output file.\n\n");
+    fprintf(stream, "--help (-h)\n Print this information to console.\n\n");
+    fprintf(stream, "-----------------------------------------------------\n");
     fflush(stream);
 }
 
 int arg_ports(struct sockaddr_in *dest, char const *arg, int *p_max) {
     char *p_hyph;
 
-    dest->sin_port = strtol(arg, &p_hyph, 0);
-    if (dest->sin_port < 1 || dest->sin_port > 65535) {
-        fprintf(stderr, "portscan: %d: Port must be between an integer 1 and 65535", dest->sin_port);
+    if (dest->sin_port != 0) {
+        fprintf(stderr, "portscan: %s: Multiple ports/ranges of ports supplied in command.\n", arg);
         fflush(stderr);
         exit(1);
     }
 
-    if (p_hyph == NULL) {
+    dest->sin_port = strtol(arg, &p_hyph, 0);
+    if (dest->sin_port < 1 || dest->sin_port > 65535) {
+        fprintf(stderr, "portscan: %d: Port must be between an integer 1 and 65535.\n", dest->sin_port);
+        fflush(stderr);
+        exit(1);
+    }
+
+    if (*p_hyph == '\0') {
         *p_max = dest->sin_port;
         return 0;
     } else if (*p_hyph != '-') {
         fprintf(stderr, "portscan: %c: Syntax error.\n", *p_hyph);
+        print_usage(stderr);
         fflush(stderr);
         exit(1);
     }
     
     *p_max = strtol(p_hyph + 1, &p_hyph, 0);
     if (*p_max < 1 || *p_max > 65535) {
-        fprintf(stderr, "portscan: %d: Port must be between an integer 1 and 65535", *p_max);
+        fprintf(stderr, "portscan: %d: Port must be between an integer 1 and 65535.\n", *p_max);
         fflush(stderr);
         exit(1);
     }
 
-    if (p_hyph != NULL) {
+    if (*p_hyph != '\0') {
         fprintf(stderr, "portscan: %c: Syntax error.\n", *p_hyph);
+        print_usage(stderr);
         fflush(stderr);
         exit(1);
     }
@@ -46,15 +59,114 @@ int arg_ports(struct sockaddr_in *dest, char const *arg, int *p_max) {
 }
 
 int arg_ip(struct sockaddr_in *dest, char const *arg) {
-
+    if (dest->sin_addr.s_addr != INADDR_NONE) {
+        fprintf(stderr, "portscan: %s: Multiple IP Addresses supplied in command.\n", arg);
+        fflush(stderr);
+        exit(1);
+    }
+    
+    if (inet_aton(arg, &(dest->sin_addr)) == 0) {
+        fprintf(stderr, "portscan: %s: Syntax error. Use IPv4 numbers-and-dots notation.\n", arg);
+        fflush(stderr);
+        exit(1);
+    }
 }
 
-int parse_args(int argc, char const *argv[], int *p_max, struct sockaddr_in *dest, char **ifilename, char **ofilename){
+int parse_args(int argc, char const *argv[], int *p_max, struct sockaddr_in *dest, char **ifilename, char **ofilename) {
+    int i;
 
+    *p_max = 0;
+    dest->sin_port = 0;
+    *ifilename = *ofilename = NULL;
+    dest->sin_addr.s_addr = INADDR_NONE;
+    for (i = 1; i < argc; i++) {
+        
+        // help
+        if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+            print_usage(stdout);
+            exit(0);
+        }
+
+        // too few/many args
+        if(i + 1 >= argc) {
+            fprintf(stderr, "portscan: %s: Syntax error.\n", argv[i]);
+            print_usage(stderr);
+            exit(1);
+        }
+
+        // ports
+        else if (!strcmp(argv[i], "--ports") || !strcmp(argv[i], "-p")) {
+            arg_ports(dest, argv[++i], p_max);
+        }
+
+        // ip
+        else if (!strcmp(argv[i], "--ip") || !strcmp(argv[i], "-i")) {
+            arg_ip(dest, argv[++i]);
+        }
+
+        // input
+        else if (!strcmp(argv[i], "--input") || !strcmp(argv[i], "--list") || !strcmp(argv[i], "-l")) {
+            if (*ifilename != NULL) {
+                fprintf(stderr, "portscan: %s: More than one input file supplied.\n", argv[i+1]);
+                print_usage(stderr);
+                exit(1);
+            }
+            if ((*ifilename = strdup(argv[++i])) == NULL) {
+                fprintf(stderr, "portscan: %s: %s\n", argv[i], strerror(errno));
+                fflush(stderr);
+            }
+        }
+
+        // output
+        else if (!strcmp(argv[i], "--output") || !strcmp(argv[i], "-o")) {
+            if (*ofilename != NULL) {
+                fprintf(stderr, "portscan: %s: More than one output file supplied.\n", argv[i+1]);
+                print_usage(stderr);
+                exit(1);
+            }
+            if ((*ofilename = strdup(argv[++i])) == NULL) {
+                fprintf(stderr, "portscan: %s: %s\n", argv[i], strerror(errno));
+                fflush(stderr);
+            }
+        }
+
+        // unrecognised
+        else {
+            fprintf(stderr, "portscan: %s: Unrecognised argument.\n", argv[i]);
+            print_usage(stderr);
+            exit(1);
+        }
+    }
+    return 0;
 }
 
-void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **ofilename, int *ifd, int *ofd){
+void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **ofilename, int *ifd, int *ofd) {
+    if (*ifilename != NULL) {
+        if (dest->sin_port != 0 || dest->sin_addr.s_addr != INADDR_NONE) {
+            fprintf(stderr, "portscan: Command-line arguments supplied despite input file.\n");
+            print_usage(stderr);
+            exit(1);
+        }
+        if ((*ifd = open(*ifilename, O_RDONLY)) == -1) {
+            fprintf(stderr, "portscan: %s, %s\n", *ifilename, strerror(errno));
+            print_usage(stderr);
+            exit(1);
+        }
+    } else { // set defaults
+        if (dest->sin_port == 0) {
+            dest->sin_port = 1;
+            *p_max = 1024;
+        }
+        if (dest->sin_addr.s_addr == INADDR_NONE) {
+            inet_aton("127.0.0.1", &(dest->sin_addr));
+        }
+    }
 
+    if (*ofilename != NULL && (*ofd = open(*ofilename, O_WRONLY | O_TRUNC | O_CREAT)) == -1) {
+        fprintf(stderr, "portscan: %s, %s\n", *ifilename, strerror(errno));
+        print_usage(stderr);
+        exit(1);
+    }
 }
 
 int parse_list(char *filename){

@@ -7,12 +7,5 @@ scanner.o: scanner.c scanner.h scanner_io.h
 scanner_io.o: scanner_io.c scanner_io.h
 	gcc -c scanner_io.c
 
-runtest:
-	gcc -o test test.c
-	./test
-
-cleantest:
-	rm -rf test
-
-clean: cleantest
+clean:
 	rm -rf portscan *.o
