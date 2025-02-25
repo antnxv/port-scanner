@@ -11,14 +11,14 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-// Prints usage information to the specified stream
+// Prints usage information to the specified stream.
 void print_usage(FILE *stream);
 
-// Determines range of ports provided to program
+// Determines range of ports provided to program.
 int arg_ports(struct sockaddr_in *dest, char const *arg, int *p_max);
 
 // Converts provided IP address to
-// network-byte-order in_addr_t
+// network-byte-order in_addr_t.
 int arg_ip(struct sockaddr_in *dest, char const *arg);
 
 // Parses arguments passed to program, gathering
@@ -29,11 +29,11 @@ int parse_args(int argc, char const *argv[], int *p_max, struct sockaddr_in *des
 // Exits with status 1 if no arguments were passed
 // to the program, if an IP was passed with no ports
 // or vice-versa, if the specified input or output
-// files are inaccessible
-void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **ofilename, int *ifd, int *ofd);
+// files are inaccessible.
+void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **ofilename, FILE **istream, int *ofd);
 
-// Parses list for destination IP addresses and port
-// ranges
-int parse_list(char *filename);
+// Parses line of input file for destination IP
+// addresses and port ranges.
+int parse_line(char **line, struct sockaddr_in *dest, int *p_max);
 
 #endif // SCANNER_IO_H
