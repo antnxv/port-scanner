@@ -34,6 +34,6 @@ void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **o
 
 // Parses line of input file for destination IP
 // addresses and port ranges.
-int parse_line(char **line, struct sockaddr_in *dest, int *p_max);
+int parse_line(char **line, int n_line, struct sockaddr_in *dest, int *p_max, char **ifilename);
 
 #endif // SCANNER_IO_H

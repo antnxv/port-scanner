@@ -8,6 +8,7 @@ void print_usage(FILE *stream) {
     fprintf(stream, "--ip (-i) IP_ADDR\n IP Address to scan. Default localhost.\n");
     fprintf(stream, " Do not supply an input file.\n\n");
     fprintf(stream, "--input (--list, -l) FILENAME\n List of IP Addresses and ports to iteratively scan.\n");
+    fprintf(stream, " Entries must be of the format IP_ADDR\\tPORT_START\\tPORT_END.\n\n");
     fprintf(stream, " Do not supply IP or port(s) to command line.\n\n");
     fprintf(stream, "--output (-o) FILENAME\n Optional output file.\n\n");
     fprintf(stream, "--help (-h)\n Print this information and discard other arguments.\n");
@@ -26,7 +27,7 @@ int arg_ports(struct sockaddr_in *dest, char const *arg, int *p_max) {
 
     dest->sin_port = strtol(arg, &p_hyph, 0);
     if (dest->sin_port < 1 || dest->sin_port > 65535) {
-        fprintf(stderr, "portscan: %d: Port must be between an integer 1 and 65535.\n", dest->sin_port);
+        fprintf(stderr, "portscan: Start port (%d) must be an integer between 1 and 65535.\n", dest->sin_port);
         fflush(stderr);
         exit(1);
     }
@@ -43,7 +44,7 @@ int arg_ports(struct sockaddr_in *dest, char const *arg, int *p_max) {
     
     *p_max = strtol(p_hyph + 1, &p_hyph, 0);
     if (*p_max < 1 || *p_max > 65535) {
-        fprintf(stderr, "portscan: %d: Port must be between an integer 1 and 65535.\n", *p_max);
+        fprintf(stderr, "portscan: End port (%d) must be an integer between start port (%d) and 65535.\n", *p_max, dest->sin_port);
         fflush(stderr);
         exit(1);
     }
@@ -145,7 +146,7 @@ int parse_args(int argc, char const *argv[], int *p_max, struct sockaddr_in *des
 
 void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **ofilename, FILE **istream, int *ofd) {
     *ofd = -1;
-    istream = NULL;
+    *istream = NULL;
     if (*ifilename != NULL) {
         if (dest->sin_port != 0 || dest->sin_addr.s_addr != INADDR_NONE) {
             fprintf(stderr, "portscan: Command-line arguments supplied despite input file.\n");
@@ -153,7 +154,7 @@ void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **o
             exit(1);
         }
         if ((*istream = fopen(*ifilename, "r")) == NULL) {
-            fprintf(stderr, "portscan: %s, %s\n", *ifilename, strerror(errno));
+            fprintf(stderr, "portscan: %s: %s\n", *ifilename, strerror(errno));
             print_usage(stderr);
             exit(1);
         }
@@ -167,16 +168,64 @@ void check_args(struct sockaddr_in *dest, int *p_max, char **ifilename, char **o
         }
     }
 
-    if (*ofilename != NULL && (*ofd = open(*ofilename, O_WRONLY | O_TRUNC | O_CREAT)) == -1) {
-        fprintf(stderr, "portscan: %s, %s\n", *ofilename, strerror(errno));
+    if (*ofilename != NULL && (*ofd = open(*ofilename, O_RDWR | O_CREAT | O_TRUNC)) == -1) {
+        fprintf(stderr, "portscan: %s: %s\n", *ofilename, strerror(errno));
         print_usage(stderr);
         exit(1);
     }
-
-    free(*ifilename);
-    free(*ofilename);
 }
 
-int parse_line(char **line, struct sockaddr_in *dest, int *p_max) {
+int parse_line(char **line, int n_line, struct sockaddr_in *dest, int *p_max, char **ifilename) {
+    char *item, *endptr, delim[3];
+    
+    strcpy(delim, "\t\n");
 
+    // IP Address
+    item = strtok(*line, delim);
+    if (item == NULL) {
+        fprintf(stderr, "portscan: %s: %d: %s: Input file entries must adhere to the format specified below.\n",
+            *ifilename, n_line, item);
+        fflush(stderr);
+        exit(1);
+    }
+    if (inet_aton(item, &(dest->sin_addr)) == 0) {
+        fprintf(stderr, "portscan: %s: %d: %s: Syntax error. Use IPv4 numbers-and-dots notation.\n",
+            *ifilename, n_line, item);
+        fflush(stderr);
+        exit(1);
+    }
+
+    // Port Start
+    item = strtok(NULL, delim);
+    if (item == NULL) {
+        fprintf(stderr, "portscan: %s: %d: %s: Input file entries must adhere to the format specified below.\n",
+            *ifilename, n_line, item);
+        fflush(stderr);
+        exit(1);
+    }
+    dest->sin_port = strtol(item, &endptr, 0);
+    if (dest->sin_port < 1 || dest->sin_port > 65535 || *endptr != '\0') {
+        fprintf(stderr, "portscan: %s: %d: Start port (%d) must be an integer between 1 and 65535.\n",
+            *ifilename, n_line, dest->sin_port);
+        fflush(stderr);
+        exit(1);
+    }
+
+    // Port End
+    item = strtok(NULL, delim);
+    if (item == NULL) {
+        fprintf(stderr, "portscan: %s: %d: %s: Input file entries must adhere to the format specified below.\n",
+            *ifilename, n_line, item);
+        fflush(stderr);
+        exit(1);
+    }
+    *p_max = strtol(item, &endptr, 0);
+    if (*p_max < dest->sin_port || *p_max > 65535 || *endptr != '\0') {
+        fprintf(stderr, "portscan: %s: %d: End port (%d) must be an integer between start port (%d) and 65535.\n",
+            *ifilename, n_line, *p_max, dest->sin_port);
+        fflush(stderr);
+        exit(1);
+    }
+
+    return 0;
 }

@@ -2,7 +2,8 @@
 
 int main(int argc, char const *argv[]) {
     FILE *istream;
-    int p_max, ofd;
+    size_t len;
+    int p_max, ofd, n_line;
     struct sockaddr_in dest;
     char *ifilename, *ofilename, *line;
     
@@ -15,27 +16,40 @@ int main(int argc, char const *argv[]) {
     
     if (istream != NULL) {
         line = NULL;
-        while (getline(&line, NULL, istream)) {
-            parse_line(&line, &dest, &p_max);
+        n_line = 1;
+        while (getline(&line, &len, istream) != -1) {
+
+            // allow newlines to break up input files
+            if (!strcmp(line, "\n")) {
+                continue;
+            }
+
+            parse_line(&line, n_line, &dest, &p_max, &ifilename);
+
+            // debug
+            printf("IP: %s\tPorts: %d-%d\tIn: %s\tOut: %s\n",
+                inet_ntoa(dest.sin_addr), dest.sin_port, p_max, ifilename, ofilename);
 
 
             // SCAN PORTS
 
 
             free(line);
+            n_line++;
         }
-        free(line);
+        printf("total lines %d\n", n_line-1);
     } else {
+        // debug
+        printf("IP: %s\tPorts: %d-%d\tIn: %s\tOut: %s\n",
+            inet_ntoa(dest.sin_addr), dest.sin_port, p_max, ifilename, ofilename);
 
 
         // SCAN PORTS
 
 
     }
-
-    // debug
-    printf("IP: %s\tPorts: %d-%d\tIn: %s\tOut: %s\n",
-        inet_ntoa(dest.sin_addr), dest.sin_port, p_max, ifilename, ofilename);
     
+    free(ifilename);
+    free(ofilename);
     return 0;
 }
