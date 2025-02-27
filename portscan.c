@@ -34,8 +34,5 @@ int main(int argc, char const *argv[]) {
         scan_ports(&dest, &p_start, &p_end);
     }
     
-    free(dest);
-    free(ifilename);
-    free(ofilename);
-    return 0;
+    exit(0);
 }

@@ -12,15 +12,20 @@
 // Returns 0 if printed, -1 if not.
 int print_ports(int *start, int *prev, int curr);
 
+// Handles errors from connect,
+// returning -1 if the program is to
+// fail and 0 otherwise.
+int print_error(int *port_status);
+
 // Iterates through the port range
 // specified and scans the supplied
 // IP address at each port.
 int scan_ports(char **dest, int *p_start, int *p_end);
 
-// Binds address and port to a socket
+// Creates a non-blocking socket
 // and attempts to connect via TCP,
-// returning the status of the
-// connection formed
+// polling until return and reporting
+// the status of the connection
 // (0 for open, -1 for closed)
 int scan_port(char **dest, int p);
 
