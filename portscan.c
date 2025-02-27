@@ -3,12 +3,11 @@
 int main(int argc, char const *argv[]) {
     FILE *istream;
     size_t len;
-    int p_max, ofd, n_line;
-    struct sockaddr_in dest;
-    char *ifilename, *ofilename, *line;
+    int p_start, p_end, ofd, n_line;
+    char *dest, *ifilename, *ofilename, *line;
     
-    parse_args(argc, argv, &p_max, &dest, &ifilename, &ofilename);
-    check_args(&dest, &p_max, &ifilename, &ofilename, &istream, &ofd);
+    parse_args(argc, argv, &dest, &p_start, &p_end, &ifilename, &ofilename);
+    check_args(&dest, &p_start, &p_end, &ifilename, &ofilename, &istream, &ofd);
 
     if (ofd != -1) {
         dup2(ofd, 1);
@@ -24,31 +23,18 @@ int main(int argc, char const *argv[]) {
                 continue;
             }
 
-            parse_line(&line, n_line, &dest, &p_max, &ifilename);
-
-            // debug
-            printf("IP: %s\tPorts: %d-%d\tIn: %s\tOut: %s\n",
-                inet_ntoa(dest.sin_addr), dest.sin_port, p_max, ifilename, ofilename);
-
-
-            // SCAN PORTS
-
+            parse_line(&line, n_line, &dest, &p_start, &p_end, &ifilename);
+            scan_ports(&dest, &p_start, &p_end);
 
             free(line);
             n_line++;
         }
         printf("total lines %d\n", n_line-1);
     } else {
-        // debug
-        printf("IP: %s\tPorts: %d-%d\tIn: %s\tOut: %s\n",
-            inet_ntoa(dest.sin_addr), dest.sin_port, p_max, ifilename, ofilename);
-
-
-        // SCAN PORTS
-
-
+        scan_ports(&dest, &p_start, &p_end);
     }
     
+    free(dest);
     free(ifilename);
     free(ofilename);
     return 0;
