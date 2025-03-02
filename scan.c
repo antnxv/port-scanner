@@ -36,7 +36,7 @@ int print_ports(int *start, int *prev, int curr) {
     return -1;
 }
 
-int print_error(char *port_status, int err) {
+int print_error(long *port_status, int err) {
     switch (err) {
         case EALREADY:
             *port_status = 1;
@@ -48,9 +48,8 @@ int print_error(char *port_status, int err) {
     }
 }
 
-int scan_port(char **dest, int p, int efd) {
+long scan_port(char **dest, int p, int efd) {
     int s, info_status, port_status;
-    struct timeval t;
     struct sp *data;
     struct sockaddr_in dp;
     struct epoll_event e;
@@ -76,10 +75,6 @@ int scan_port(char **dest, int p, int efd) {
     e.events = EPOLLOUT;
     fcntl(s, F_SETFL, O_NONBLOCK);
 
-    t.tv_sec = TIMEOUT;
-    t.tv_usec = 0;
-    setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &t, sizeof t);
-
     if (connect(s, (struct sockaddr *) (&dp), sizeof (struct sockaddr)) == 0) {
         close(s);
         free(data);
@@ -93,17 +88,19 @@ int scan_port(char **dest, int p, int efd) {
         free(data);
         exit(1);
     }
-    return s;
+    return (long) e.data.ptr;
 }
 
 int scan_ports(char **dest, int *p_start, int *p_end) {
     int p_i, b, b_start, b_end, b_size;; // iterating through ports
-    int s, p, efd, pfds, err, errlen; // processing connection results
+    int p, efd, pfds, err, errlen; // processing connection results
+    long s;
     int start, prev, curr; // printing open ports
     struct epoll_event erry[MAX_EVENTS];
 
-    // stores 1 for open, 0 for closed
-    char ports[*p_end - *p_start + 1];
+    // stores data ptr if connection pending,
+    // 0 if port closed, 1 if port open
+    long ports[*p_end - *p_start + 1];
 
     memset(ports, 0, *p_end - *p_start + 1);
     
@@ -128,17 +125,37 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
         b_start = *p_start + b * MAX_EVENTS;
         b_end = (*p_end < b_start + MAX_EVENTS - 1)? *p_end : b_start + MAX_EVENTS - 1;
         b_size = b_end - b_start + 1;
+
+        printf("Scanning %d-%d...", b_start, b_end);
+        fflush(stdout);
         
         for (p_i = b_start; p_i <= b_end; p_i++) {
             if ((s = scan_port(dest, p_i, efd)) == 0) {
                 ports[p_i - *p_start] = 1;
+            } else {
+                ports[p_i - *p_start] = s;
             }
         }
 
         while(b_size > 0) {
-            pfds = epoll_wait(efd, erry, MAX_EVENTS, -1);
+            if ((pfds = epoll_wait(efd, erry, MAX_EVENTS, TIMEOUT)) == -1) {
+                fprintf(stderr, "portscan: epoll_wait: %s", strerror(errno));
+                exit(1);
+            }
+            
+            // timed out
+            if (pfds == 0) {
+                for (p_i = b_start; p_i <= b_end; p_i++) {
+                    // unclosed socket, unfreed data
+                    if (ports[p_i - *p_start] != 0 && ports[p_i - *p_start] != 1) {
+                        close(((struct sp *) ports[p_i - *p_start])->s);
+                        free((struct sp *) ports[p_i - *p_start]);
+                    }
+                }
+                break;
+            }
+            
             b_size -= pfds;
-
             for (p_i = 0; p_i < pfds; p_i++) {
                 s = ((struct sp *) erry[p_i].data.ptr)->s;
                 p = ((struct sp *) erry[p_i].data.ptr)->p;
@@ -155,18 +172,19 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
                 }
 
                 free(erry[p_i].data.ptr);
+                erry[p_i].data.ptr = NULL;
                 close(s);
             }
         }
 
+        printf("\r                       \r");
         for (p_i = b_start; p_i <= b_end; p_i++) {
             if (ports[p_i - *p_start] == 1) {
                 print_ports(&start, &prev, p_i);
             }
+            print_ports(&start, &prev, 0); // force final print for batch
         }
     }
-
-    print_ports(&start, &prev, 0); // force final print
 
     close(efd);
     return 0;

@@ -7,7 +7,7 @@
 #include <sys/types.h>
 
 #define MAX_EVENTS 256
-#define TIMEOUT 5
+#define TIMEOUT 750
 
 // Simultaneous storage of ports and
 // socket file descriptors in events.
@@ -26,18 +26,22 @@ int print_ports(int *start, int *prev, int curr);
 // Handles errors from connect,
 // exiting with status 1 on
 // system/process errors
-int print_error(char *port_status, int err);
+int print_error(long *port_status, int err);
 
 // Iterates through the port range
 // specified and scans the supplied
 // IP address at each port.
+// Returns 0 on immediate connection
+// or a pointer to the dynamically
+// allocated epoll data structure
+// for subsequent freeing.
 int scan_ports(char **dest, int *p_start, int *p_end);
 
 // Creates a non-blocking socket
 // and initiates a TCP connection.
-// Returns the file discriptor
-// of the new socket or 0 if an
+// Returns a pointer to the socket's
+// allocated event data or 0 if an
 // immediate connection is formed.
-int scan_port(char **dest, int p, int efd);
+long scan_port(char **dest, int p, int efd);
 
 #endif // SCAN_H
