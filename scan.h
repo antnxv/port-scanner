@@ -6,7 +6,7 @@
 #include <sys/epoll.h>
 #include <sys/types.h>
 
-#define MAX_EVENTS 1024
+#define MAX_EVENTS 256
 #define TIMEOUT 5
 
 // Simultaneous storage of ports and

@@ -1,7 +1,7 @@
 #include "scan.h"
 
 int print_ports(int *start, int *prev, int curr) {
-    if (/* curr ~ KNOWN SERVICE || */ (curr != *prev - 1 && *start != 0) || (curr == 0 && *prev != 0)) {
+    if (/* curr ~ KNOWN SERVICE || */ (*prev != curr - 1 && *start != 0) || (curr == 0 && *prev != 0)) {
         if (*start == *prev) {
             printf("  Port %d\n", *prev);
         } else  {
@@ -9,6 +9,7 @@ int print_ports(int *start, int *prev, int curr) {
         }
         /* if ( curr ~ KNOWN SERVICE) {
             printf("Port %d (%s)\n", curr, "SERVICE");
+            *prev = 0;
         } */
         *start = curr;
         *prev = curr;
@@ -69,28 +70,28 @@ int scan_port(char **dest, int p, int efd) {
     setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &t, sizeof t);
 
     if (connect(s, (struct sockaddr *) (&dp), sizeof (struct sockaddr)) == 0) {
-        free(data);
         close(s);
+        free(data);
         return 0;
     }
 
     if (epoll_ctl(efd, EPOLL_CTL_ADD, s, &e) == -1) {
         fprintf(stderr, "portscan: epoll_ctl: %s.\n",
             strerror(errno));
-        free(data);
         close(s);
+        free(data);
         exit(1);
     }
     return s;
 }
 
 int scan_ports(char **dest, int *p_start, int *p_end) {
-    int p_i, b, b_start, b_end;; // iterating through ports
+    int p_i, b, b_start, b_end, b_size;; // iterating through ports
     int s, p, efd, pfds, err, errlen; // processing connection results
     int start, prev, curr; // printing open ports
     struct epoll_event erry[MAX_EVENTS];
 
-    // initially stores socket fds, then stores 1 for open, 0 for closed
+    // stores 1 for open, 0 for closed
     char ports[*p_end - *p_start + 1];
 
     memset(ports, 0, *p_end - *p_start + 1);
@@ -102,47 +103,52 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
     }
 
     if (*p_start != *p_end) {
-        printf("IP Address: %s\nStarting Port: %d\nEnd Port: %d\nOpen port(s):\n",
+        printf("IP Address: %s\nStarting Port: %d\nEnd Port: %d\nOpen:\n",
             *dest, *p_start, *p_end);
     } else {
         printf("IP Address: %s\nPort: %d\nOpen port(s):\n",
             *dest, *p_start);
     }
     
+    start = prev = 0;
+
     // Split ports up into MAX_EVENTS-sized batches
     for (b = 0; b < (*p_end - *p_start + MAX_EVENTS) / MAX_EVENTS; b++) {
         b_start = *p_start + b * MAX_EVENTS;
-        b_end = b_start + MAX_EVENTS - 1;
-        for (p_i = b_start; p_i <= *p_end && p_i <= b_end; p_i++) {
+        b_end = (*p_end < b_start + MAX_EVENTS - 1)? *p_end : b_start + MAX_EVENTS - 1;
+        b_size = b_end - b_start + 1;
+        
+        for (p_i = b_start; p_i <= b_end; p_i++) {
             if ((s = scan_port(dest, p_i, efd)) == 0) {
                 ports[p_i - *p_start] = 1;
-            } else {
-                ports[p_i - *p_start] = s;
             }
         }
-        
-        pfds = epoll_wait(efd, erry, MAX_EVENTS, -1);
-        // handle errno or pfds not being every event
 
-        for (p_i = 0; p_i < pfds; p_i++) {
-            s = ((struct sp *) erry[p_i].data.ptr)->s;
-            p = ((struct sp *) erry[p_i].data.ptr)->p;
-            
-            errlen = sizeof err;
-            getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen);
-            if (err == 0) {
-                ports[p - *p_start] = 1;
-                printf("%d - %d = %d\n", p, *p_start, p - *p_start);
-            } else {
-                print_error(ports + (p - *p_start), err);
+        while(b_size > 0) {
+            pfds = epoll_wait(efd, erry, MAX_EVENTS, -1);
+            b_size -= pfds;
+
+            for (p_i = 0; p_i < pfds; p_i++) {
+                s = ((struct sp *) erry[p_i].data.ptr)->s;
+                p = ((struct sp *) erry[p_i].data.ptr)->p;
+                
+                errlen = sizeof err;
+                
+                if (getsockopt(s, SOL_SOCKET, SO_ERROR, &err, &errlen) == -1) {
+                    fprintf(stderr, "portscan: getsockopt: %s", strerror(errno));
+                    exit(1);
+                } else if (err == 0) {
+                    ports[p - *p_start] = 1;
+                } else {
+                    print_error(ports + (p - *p_start), err);
+                }
+
+                free(erry[p_i].data.ptr);
+                close(s);
             }
-
-            free(erry[p_i].data.ptr);
-            close(s);
         }
 
-        start = prev = 0;
-        for (p_i = b_start; p_i <= *p_end && p_i <= b_end; p_i++) {
+        for (p_i = b_start; p_i <= b_end; p_i++) {
             if (ports[p_i - *p_start] == 1) {
                 print_ports(&start, &prev, p_i);
             }
