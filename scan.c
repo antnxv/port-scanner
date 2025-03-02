@@ -5,24 +5,25 @@ int compare_ports(const void *a, const void *b) {
     return ((struct service *)a)->p - ((struct service *)b)->p;
 }
 
-int print_ports(int *start, int *prev, int curr) {
+int print_ports(int *start, int *prev, int curr, int *print_start) {
     struct service *known;
 
     struct service key = {curr, NULL};
     known = bsearch(&key, service_map, 752, sizeof(struct service), compare_ports);
 
     if (known || curr == 0 || (*prev != curr-1 && *start != 0)) {
-        if (*prev != 0) {
+        if (*start != 0) {
+
             if (*start == *prev) {
-                printf("  Port %d\n", *prev);
+                printf("%s\t\tPort %d\n", (*print_start)? (*print_start = 0, "Open:") : "", *prev);
             } else {
-                printf("  Ports %d-%d\n", *start, *prev);
+                printf("%s\t\tPorts %d-%d\n", (*print_start)? (*print_start = 0, "Open:") : "", *start, *prev);
             }
         }
 
         if (known) {
-            printf("  Port %d (%s)\n", curr, known->service);
-            return *start = *prev = 0;
+            printf("%s\t\tPort %d (%s)\n", (*print_start)? (*print_start = 0, "Open:") : "", curr, known->service);
+            return *start = 0;
         }
 
         *start = *prev = curr;
@@ -41,11 +42,12 @@ int print_error(long *port_status, int err) {
         case EALREADY:
             *port_status = 1;
             return 0;
-        case ECONNREFUSED: case ETIMEDOUT: case ENETUNREACH:
+        case ECONNREFUSED: case ETIMEDOUT:
+        case ENETUNREACH: case EHOSTUNREACH:
             *port_status = 0;
             return 0;
         default:
-            fprintf(stderr, "portscan: connect: %s\n", strerror(err));
+            fprintf(stderr, "portscan: %d: connect: %s\n", err, strerror(err));
             exit(1);
     }
 }
@@ -96,7 +98,7 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
     int p_i, b, b_start, b_end, b_size;; // iterating through ports
     int p, efd, pfds, err, errlen; // processing connection results
     long s;
-    int start, prev, curr; // printing open ports
+    int start, prev, curr, print_start; // printing open ports
     struct epoll_event erry[MAX_EVENTS];
 
     // stores data ptr if connection pending,
@@ -112,14 +114,15 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
     }
 
     if (*p_start != *p_end) {
-        printf("IP Address: %s\nStarting Port: %d\nEnd Port: %d\nOpen:\n",
+        printf("IP Address:\t%s\nStart Port:\t%d\nEnd Port:\t%d\n",
             *dest, *p_start, *p_end);
     } else {
-        printf("IP Address: %s\nPort: %d\nOpen port(s):\n",
+        printf("IP Address:\t%s\nPort:\t%d\n",
             *dest, *p_start);
     }
     
     start = prev = 0;
+    print_start = 1;
 
     // Split ports up into MAX_EVENTS-sized batches
     for (b = 0; b < (*p_end - *p_start + MAX_EVENTS) / MAX_EVENTS; b++) {
@@ -180,10 +183,14 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
         printf("\r                       \r");
         for (p_i = b_start; p_i <= b_end; p_i++) {
             if (ports[p_i - *p_start] == 1) {
-                print_ports(&start, &prev, p_i);
+                print_ports(&start, &prev, p_i, &print_start);
             }
-            print_ports(&start, &prev, 0); // force final print for batch
+            print_ports(&start, &prev, 0, &print_start); // force final print for batch
         }
+    }
+
+    if (print_start == 1) {
+        printf("All Closed\n");
     }
 
     close(efd);

@@ -21,7 +21,7 @@ struct sp {
 //  curr = 0 forces print,
 //  start = 0 starts new range
 // Returns 0 if printed, -1 if not.
-int print_ports(int *start, int *prev, int curr);
+int print_ports(int *start, int *prev, int curr, int *print_start);
 
 // Handles errors from connect,
 // exiting with status 1 on

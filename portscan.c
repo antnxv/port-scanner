@@ -3,7 +3,7 @@
 int main(int argc, char const *argv[]) {
     FILE *istream;
     size_t len;
-    int p_start, p_end, ofd, n_line;
+    int p_start, p_end, ofd, n_line, split;
     char *dest, *ifilename, *ofilename, *line;
     
     parse_args(argc, argv, &dest, &p_start, &p_end, &ifilename, &ofilename);
@@ -16,14 +16,25 @@ int main(int argc, char const *argv[]) {
     if (istream != NULL) {
         line = NULL;
         n_line = 1;
+        split = 0;
         while (getline(&line, &len, istream) != -1) {
 
-            // allow newlines to break up input files
+            // allow splits to break up input files
             if (!strcmp(line, "\n")) {
+                n_line++;
                 continue;
             }
 
+            if (n_line != 0)
             parse_line(&line, n_line, &dest, &p_start, &p_end, &ifilename);
+            
+            // separate outputs for separate list entries
+            if (split) {
+                printf("\n");
+            } else {
+                split = 1;
+            }
+
             scan_ports(&dest, &p_start, &p_end);
 
             free(line);
