@@ -8,7 +8,7 @@ int print_ports(int *start, int *prev, int curr) {
             printf("  Ports %d-%d\n", *start, *prev);
         }
         /* if ( curr ~ KNOWN SERVICE) {
-            printf("Port %d (%s)\n", curr, "SERVICE");
+            printf("  Port %d (%s)\n", curr, "SERVICE");
             *prev = 0;
         } */
         *start = curr;

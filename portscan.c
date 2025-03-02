@@ -29,7 +29,6 @@ int main(int argc, char const *argv[]) {
             free(line);
             n_line++;
         }
-        printf("total lines %d\n", n_line-1);
     } else {
         scan_ports(&dest, &p_start, &p_end);
     }

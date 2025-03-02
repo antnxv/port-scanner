@@ -138,7 +138,7 @@ void check_args(char **dest, int *p_start, int *p_end, char **ifilename, char **
     *ofd = -1;
     *istream = NULL;
     if (*ifilename != NULL) {
-        if (*p_start != 0 || dest != NULL) {
+        if (*p_start != 0 || *dest != NULL) {
             fprintf(stderr, "portscan: Command-line arguments supplied despite input file.\n");
             print_usage(stderr);
             exit(1);
@@ -179,7 +179,14 @@ int parse_line(char **line, int n_line, char **dest, int *p_start, int *p_end, c
             *ifilename, n_line, item);
         exit(1);
     }
-    if ((*dest = strdup(item)) == NULL) {
+
+    if (!strcmp(item, "localhost")) {
+        *dest = strdup("127.0.0.1");
+    } else {
+        *dest = strdup(item);
+    }
+
+    if (*dest == NULL) {
         fprintf(stderr, "portscan: %s: %d: %s: %s\n",
             *ifilename, n_line, item, strerror(errno));
         exit(1);
