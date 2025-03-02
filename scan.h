@@ -24,8 +24,8 @@ struct sp {
 int print_ports(int *start, int *prev, int curr);
 
 // Handles errors from connect,
-// returning -1 if the program is to
-// fail and 0 otherwise.
+// exiting with status 1 on
+// system/process errors
 int print_error(char *port_status, int err);
 
 // Iterates through the port range

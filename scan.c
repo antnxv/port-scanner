@@ -1,18 +1,31 @@
 #include "scan.h"
+#include "service.h"
+
+int compare_ports(const void *a, const void *b) {
+    return ((struct service *)a)->p - ((struct service *)b)->p;
+}
 
 int print_ports(int *start, int *prev, int curr) {
-    if (/* curr ~ KNOWN SERVICE || */ (*prev != curr - 1 && *start != 0) || (curr == 0 && *prev != 0)) {
-        if (*start == *prev) {
-            printf("  Port %d\n", *prev);
-        } else  {
-            printf("  Ports %d-%d\n", *start, *prev);
+    struct service *known;
+
+    struct service key = {curr, NULL};
+    known = bsearch(&key, service_map, 752, sizeof(struct service), compare_ports);
+
+    if (known || curr == 0 || (*prev != curr-1 && *start != 0)) {
+        if (*prev != 0) {
+            if (*start == *prev) {
+                printf("  Port %d\n", *prev);
+            } else {
+                printf("  Ports %d-%d\n", *start, *prev);
+            }
         }
-        /* if ( curr ~ KNOWN SERVICE) {
-            printf("  Port %d (%s)\n", curr, "SERVICE");
-            *prev = 0;
-        } */
-        *start = curr;
-        *prev = curr;
+
+        if (known) {
+            printf("  Port %d (%s)\n", curr, known->service);
+            return *start = *prev = 0;
+        }
+
+        *start = *prev = curr;
         return 0;
     }
 
@@ -24,8 +37,6 @@ int print_ports(int *start, int *prev, int curr) {
 }
 
 int print_error(char *port_status, int err) {
-    // report network errors,
-    // fail on system/process errors
     switch (err) {
         case EALREADY:
             *port_status = 1;
