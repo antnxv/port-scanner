@@ -40,7 +40,9 @@ int print_error(long *port_status, int err) {
     switch (err) {
         case EALREADY:
             *port_status = 1;
+            return 0;
         case ECONNREFUSED: case ETIMEDOUT: case ENETUNREACH:
+            *port_status = 0;
             return 0;
         default:
             fprintf(stderr, "portscan: connect: %s\n", strerror(err));
@@ -82,8 +84,7 @@ long scan_port(char **dest, int p, int efd) {
     }
 
     if (epoll_ctl(efd, EPOLL_CTL_ADD, s, &e) == -1) {
-        fprintf(stderr, "portscan: epoll_ctl: %s.\n",
-            strerror(errno));
+        fprintf(stderr, "portscan: epoll_ctl: %s.\n", strerror(errno));
         close(s);
         free(data);
         exit(1);
@@ -172,7 +173,6 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
                 }
 
                 free(erry[p_i].data.ptr);
-                erry[p_i].data.ptr = NULL;
                 close(s);
             }
         }
