@@ -88,7 +88,14 @@ int parse_args(int argc, char const *argv[], char **dest, int *p_start, int *p_e
                 print_usage(stderr);
                 exit(1);
             }
-            if ((*dest = strdup(argv[++i])) == NULL) {
+            if (!strcmp(argv[i+1], "localhost")) {
+                *dest = strdup("127.0.0.1");
+                i++;
+            } else {
+                *dest = strdup(argv[++i]);
+            }
+            
+            if (*dest == NULL) {
                 fprintf(stderr, "portscan: %s: %s\n", argv[i], strerror(errno));
             }
         }
