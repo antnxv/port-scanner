@@ -91,6 +91,11 @@ long scan_port(char **dest, int p, int efd) {
         free(data);
         exit(1);
     }
+
+    // We must perform free(data) for all events created,
+    // but if timeout occurs data will never be accessible
+    // through erry[] in scan_ports. For this reason, we
+    // smuggle the address of data in through ports[].
     return (long) e.data.ptr;
 }
 
