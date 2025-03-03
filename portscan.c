@@ -25,7 +25,6 @@ int main(int argc, char const *argv[]) {
                 continue;
             }
 
-            if (n_line != 0)
             parse_line(&line, n_line, &dest, &p_start, &p_end, &ifilename);
             
             // separate outputs for separate list entries
@@ -44,5 +43,6 @@ int main(int argc, char const *argv[]) {
         scan_ports(&dest, &p_start, &p_end);
     }
     
+    // close(1);
     exit(0);
 }

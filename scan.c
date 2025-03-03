@@ -15,14 +15,14 @@ int print_ports(int *start, int *prev, int curr, int *print_start) {
         if (*start != 0) {
 
             if (*start == *prev) {
-                printf("%s\t\tPort %d\n", (*print_start)? (*print_start = 0, "Open:") : "", *prev);
+                printf("%s\t\tPort %d\n", (*print_start)? (*print_start = 0, "Open:") : "     ", *prev);
             } else {
-                printf("%s\t\tPorts %d-%d\n", (*print_start)? (*print_start = 0, "Open:") : "", *start, *prev);
+                printf("%s\t\tPorts %d-%d\n", (*print_start)? (*print_start = 0, "Open:") : "     ", *start, *prev);
             }
         }
 
         if (known) {
-            printf("%s\t\tPort %d (%s)\n", (*print_start)? (*print_start = 0, "Open:") : "", curr, known->service);
+            printf("%s\t\tPort %d (%s)\n", (*print_start)? (*print_start = 0, "Open:") : "     ", curr, known->service);
             return *start = 0;
         }
 
@@ -130,8 +130,7 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
         b_end = (*p_end < b_start + MAX_EVENTS - 1)? *p_end : b_start + MAX_EVENTS - 1;
         b_size = b_end - b_start + 1;
 
-        printf("Scanning %d-%d...", b_start, b_end);
-        fflush(stdout);
+        fprintf(stderr, "\rScanning %s %d-%d...", *dest, b_start, b_end);
         
         for (p_i = b_start; p_i <= b_end; p_i++) {
             if ((s = scan_port(dest, p_i, efd)) == 0) {
@@ -180,12 +179,13 @@ int scan_ports(char **dest, int *p_start, int *p_end) {
             }
         }
 
-        printf("\r                       \r");
+        fprintf(stderr, "\r                                       \r");
         for (p_i = b_start; p_i <= b_end; p_i++) {
             if (ports[p_i - *p_start] == 1) {
                 print_ports(&start, &prev, p_i, &print_start);
             }
             print_ports(&start, &prev, 0, &print_start); // force final print for batch
+            fflush(stdout);
         }
     }
 

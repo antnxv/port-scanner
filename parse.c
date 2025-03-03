@@ -160,7 +160,7 @@ void check_args(char **dest, int *p_start, int *p_end, char **ifilename, char **
         }
     }
 
-    if (*ofilename != NULL && (*ofd = open(*ofilename, O_RDWR | O_CREAT | O_TRUNC)) == -1) {
+    if (*ofilename != NULL && (*ofd = open(*ofilename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1) {
         fprintf(stderr, "portscan: %s: %s\n", *ofilename, strerror(errno));
         print_usage(stderr);
         exit(1);
