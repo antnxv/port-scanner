@@ -1,7 +1,6 @@
 #include "parse.h"
 
 void print_usage(FILE *stream) {
-    fprintf(stream, "+---------------------------------------------------+\n");
     fprintf(stream, "Usage: portscan OPTIONS\n\n");
     fprintf(stream, "--ports (-p) START[:END]\n Port (range) to scan. Default 1-1024, valid 1-65535.\n");
     fprintf(stream, " Do not supply an input file.\n\n");
@@ -12,7 +11,6 @@ void print_usage(FILE *stream) {
     fprintf(stream, " Do not supply IP or port(s) to command line.\n\n");
     fprintf(stream, "--output (-o) FILENAME\n Optional output file.\n\n");
     fprintf(stream, "--help (-h)\n Print this information and discard other arguments.\n");
-    fprintf(stream, "+---------------------------------------------------+\n");
 }
 
 int arg_ports(char const *arg, int *p_start, int *p_end) {
