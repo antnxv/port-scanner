@@ -32,7 +32,7 @@ ECE-303 Project 1
 ```
 Usage: portscan OPTIONS
 
---ports (-p) START[:END]
+--ports (-p) START[-END]
  Port (range) to scan. Default 1-1024, valid 1-65535.
  Do not supply an input file.
 
