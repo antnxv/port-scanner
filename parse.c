@@ -2,7 +2,7 @@
 
 void print_usage(FILE *stream) {
     fprintf(stream, "Usage: portscan OPTIONS\n\n");
-    fprintf(stream, "--ports (-p) START[:END]\n Port (range) to scan. Default 1-1024, valid 1-65535.\n");
+    fprintf(stream, "--ports (-p) START[-END]\n Port (range) to scan. Default 1-1024, valid 1-65535.\n");
     fprintf(stream, " Do not supply an input file.\n\n");
     fprintf(stream, "--ip (-i) IP_ADDR\n IP Address to scan. Default localhost.\n");
     fprintf(stream, " Do not supply an input file.\n\n");
